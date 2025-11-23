@@ -7,11 +7,9 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -41,11 +39,12 @@ class DashboardPanelProvider extends PanelProvider
                 'primary' => Color::Sky,
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
-            
+
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
                 // Dashboard::class,
                 \App\Filament\Pages\Dashboard::class,
+                \App\Filament\Pages\Laporan::class,
             ])
 
             ->userMenuItems([
@@ -55,9 +54,15 @@ class DashboardPanelProvider extends PanelProvider
 
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([
-                AccountWidget::class,
-                /* FilamentInfoWidget::class, */
+                \App\Filament\Widgets\LaporanFilterWidget::class,
+                \App\Filament\Widgets\LaporanStatsWidget::class,
+                \App\Filament\Widgets\LaporanTableWidget::class,
+                // \App\Filament\Widgets\PeriodeFilterWidget::class,
+                // \App\Filament\Widgets\KategoriFilterWidget::class,
+                // \App\Filament\Widgets\TipeFilterWidget::class,
+                // \App\Filament\Widgets\DateRangeFilterWidget::class,
             ])
+            
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

@@ -10,7 +10,8 @@ class LaporanExport
 {
     public static function generate($start = null, $end = null)
     {
-        $query = Transaction::with('category');
+        $query = Transaction::with('category')
+            ->whereNull('deleted_at');  // soft delete safety
 
         if ($start && $end) {
             $query->whereBetween('transaction_date', [$start, $end]);
@@ -18,21 +19,24 @@ class LaporanExport
 
         $data = $query->orderBy('transaction_date')->get();
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         // Header
-        $headers = ['Tanggal', 'Kategori', 'Deskripsi', 'Tipe', 'Jumlah'];
+        $headers = ['Tanggal', 'Item', 'Kategori', 'Harga Satuan', 'Qty', 'Total', 'Tipe'];
         $sheet->fromArray($headers, null, 'A1');
 
         // Body
         $row = 2;
         foreach ($data as $t) {
             $sheet->setCellValue("A{$row}", $t->transaction_date->format('d-m-Y'));
-            $sheet->setCellValue("B{$row}", $t->category->name);
-            $sheet->setCellValue("C{$row}", $t->description);
-            $sheet->setCellValue("D{$row}", $t->transaction_type);
-            $sheet->setCellValue("E{$row}", $t->total_amount);
+            $sheet->setCellValue("B{$row}", $t->item->name ?? '-');
+            $sheet->setCellValue("C{$row}", $t->category->name ?? '-');
+            $sheet->setCellValue("D{$row}", $t->amount);
+            $sheet->setCellValue("E{$row}", $t->quantity);
+            $sheet->setCellValue("F{$row}", $t->total_amount);
+            $sheet->setCellValue("G{$row}", $t->transaction_type === 'income' ? 'Pemasukan' : 'Pengeluaran');
+
             $row++;
         }
 

@@ -11,21 +11,27 @@ use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\On;
+use Spatie\SimpleExcel\SimpleExcelWriter;
 
 class LaporanTableWidget extends TableWidget
 {
     protected static ?string $heading = 'Daftar Transaksi';
+
     protected int|string|array $columnSpan = 12;
 
     public ?string $periode = 'bulanan';
+
     public ?string $selectedCategory = null;
+
     public ?string $selectedType = null;
+
     public ?string $start_date = null;
+
     public ?string $end_date = null;
 
-    # =====================================================
-    # LISTENERS DARI WIDGET TUNGGAL
-    # =====================================================
+    // =====================================================
+    // LISTENERS DARI WIDGET TUNGGAL
+    // =====================================================
 
     #[On('periodeUpdated')]
     public function setPeriode($periode)
@@ -52,55 +58,79 @@ class LaporanTableWidget extends TableWidget
     public function setDateRange($range)
     {
         $this->start_date = $range['start'];
-        $this->end_date   = $range['end'];
+        $this->end_date = $range['end'];
         $this->resetTable();
     }
 
-    # =====================================================
-    # LISTENER DARI WIDGET CAMPUR FILTER
-    # =====================================================
-    
+    // =====================================================
+    // LISTENER DARI WIDGET CAMPUR FILTER
+    // =====================================================
+
     #[On('filtersUpdated')]
     public function applyFilters($data)
     {
-        $this->periode         = $data['periode'];
-        $this->selectedType    = $data['type'];
+        $this->periode = $data['periode'];
+        $this->selectedType = $data['type'];
         $this->selectedCategory = $data['category'];
-        $this->start_date      = $data['start_date'];
-        $this->end_date        = $data['end_date'];
+        $this->start_date = $data['start_date'];
+        $this->end_date = $data['end_date'];
 
         $this->resetTable();
     }
 
-    
-    # =====================================================
-    # EXPORT
-    # =====================================================
+    // =====================================================
+    // EXPORT
+    // =====================================================
 
     public function exportPDF()
     {
         $data = $this->getTableQuery()->get();
-        $pdf  = Pdf::loadView('exports.laporan-pdf', compact('data'));
+        $pdf = Pdf::loadView('exports.laporan-pdf', compact('data'));
 
         return response()->streamDownload(
-            fn () => print($pdf->stream()),
+            fn () => print ($pdf->stream()),
             'laporan-keuangan.pdf'
         );
     }
 
     public function exportExcel()
     {
-        $file = \App\Exports\LaporanExport::generate(
-            $this->start_date,
-            $this->end_date
-        );
+        $data = $this->getTableQuery()->get();
 
-        return response()->download($file)->deleteFileAfterSend(true);
+        $path = storage_path('app/laporan-'.time().'.xlsx');
+
+        $writer = SimpleExcelWriter::create($path);
+
+        $writer->addRow([
+            'Tanggal',
+            'Item',
+            'Kategori',
+            'Tipe',
+            'Harga',
+            'Qty',
+            'Total',
+        ]);
+
+        foreach ($data as $row) {
+            $writer->addRow([
+                'Tanggal' => $row->transaction_date,
+                'Item' => $row->item?->name,
+                'Kategori' => $row->category?->name,
+                'Tipe' => $row->transaction_type === 'income' ? 'Pemasukan' : 'Pengeluaran',
+                'Harga' => $row->amount,
+                'Qty' => $row->quantity,
+                'Total' => $row->total_amount,
+            ]);
+        }
+
+        $writer->close();
+
+        return response()->download($path)->deleteFileAfterSend(true);
     }
 
-    # =====================================================
-    # QUERY TABLE
-    # =====================================================
+    // =====================================================
+    // QUERY TABLE
+    // =====================================================
 
     protected function getTableQuery(): Builder
     {
@@ -110,7 +140,7 @@ class LaporanTableWidget extends TableWidget
             $query->whereDate('transaction_date', today());
         } elseif ($this->periode === 'bulanan') {
             $query->whereMonth('transaction_date', now()->month)
-                  ->whereYear('transaction_date', now()->year);
+                ->whereYear('transaction_date', now()->year);
         } elseif ($this->periode === 'tahunan') {
             $query->whereYear('transaction_date', now()->year);
         } elseif ($this->periode === 'custom') {
@@ -133,9 +163,9 @@ class LaporanTableWidget extends TableWidget
         return $query->orderBy('transaction_date');
     }
 
-    # =====================================================
-    # TABLE UI
-    # =====================================================
+    // =====================================================
+    // TABLE UI
+    // =====================================================
 
     public function table(Table $table): Table
     {
